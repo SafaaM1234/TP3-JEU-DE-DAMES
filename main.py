@@ -24,6 +24,7 @@ def lire_coup(texte: str) -> tuple[str, str]:
     return depart, arrivee
 
 
+
 def main() -> int:
     partie = Partie()
 
@@ -32,12 +33,26 @@ def main() -> int:
     while partie.gagnant is None:
         try:
             texte = input(
-                f"Au tour des {partie.trait}s (départ arrivée ou quitter) : "
+                f"Au tour des {partie.trait}s "
+                "(départ arrivée, sauver, reprendre ou quitter) : "
             )
 
-            if texte.strip().lower() == "quitter":
+            commande = texte.strip().lower()
+
+            if commande == "quitter":
                 print("Partie abandonnée.")
                 return 0
+
+            elif commande == "sauver":
+                partie.sauvegarder("partie.json")
+                print("Partie sauvegardée dans partie.json.")
+                continue
+
+            elif commande == "reprendre":
+                partie = Partie.charger("partie.json")
+                print("Partie reprise avec succès !")
+                print(partie.plateau)
+                continue
 
             depart, arrivee = lire_coup(texte)
 
@@ -45,6 +60,9 @@ def main() -> int:
 
             print(coup)
             print(partie.plateau)
+
+        except FileNotFoundError:
+            print("Aucune sauvegarde trouvée : partie.json n'existe pas.")
 
         except (ValueError, ErreurDames) as erreur:
             print(f"Refusé : {erreur}")

@@ -1,16 +1,60 @@
 """Jouer aux dames à deux dans le terminal : chaque joueur tape son coup, comme c3 d4."""
-from dames import Partie
+import re
+
+from dames import Partie, Case
 from exceptions import ErreurDames
 
 
 def lire_coup(texte: str) -> tuple[str, str]:
     """« c3 d4 », « c3-d4 » ou « d4xf6 » donnent ("c3", "d4"). Sinon ValueError."""
-    raise NotImplementedError("à compléter")
+
+    morceaux = re.split(r"\s*(?:-|x|\s+)\s*", texte.strip())
+
+    if len(morceaux) != 2:
+        raise ValueError("tapez deux cases")
+
+    depart, arrivee = morceaux
+
+    try:
+        depart = str(Case.depuis_nom(depart))
+        arrivee = str(Case.depuis_nom(arrivee))
+    except ValueError:
+        raise ValueError("tapez deux cases")
+
+    return depart, arrivee
 
 
 def main() -> int:
-    raise NotImplementedError("à compléter")
+    partie = Partie()
 
+    print(partie.plateau)
+
+    while partie.gagnant is None:
+        try:
+            texte = input(
+                f"Au tour des {partie.trait}s (départ arrivée ou quitter) : "
+            )
+
+            if texte.strip().lower() == "quitter":
+                print("Partie abandonnée.")
+                return 0
+
+            depart, arrivee = lire_coup(texte)
+
+            coup = partie.jouer(depart, arrivee)
+
+            print(coup)
+            print(partie.plateau)
+
+        except (ValueError, ErreurDames) as erreur:
+            print(f"Refusé : {erreur}")
+
+    if partie.gagnant == "blanc":
+        print("Les blancs gagnent !")
+    else:
+        print("Les noirs gagnent !")
+
+    return 0
 
 if __name__ == "__main__":
     raise SystemExit(main())

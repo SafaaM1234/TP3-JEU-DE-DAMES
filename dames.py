@@ -140,8 +140,6 @@ class Piece(ABC):
         return f"{self.NOM} {adjectif}"
 
 
-
-
 # --- Étape 3 : le plateau ------------------------------------------------------------------------
 class Plateau:
     """Le plateau A des pièces (composition), rangées dans un dict privé case -> pièce."""
@@ -214,15 +212,76 @@ class Plateau:
     def prises_possibles(self, couleur: str) -> dict[Case, dict[Case, Case]]:
         """Toutes les prises d'un joueur : {départ: {arrivée: pièce prise}}, seulement pour les
         pièces qui peuvent prendre."""
-        raise NotImplementedError("à compléter")
+        resultat = {}
+
+        for case in self:
+            piece = self[case]
+
+            if piece.couleur == couleur:
+                prises = piece.prises(case, self)
+
+                if prises:
+                    resultat[case] = prises
+
+        return resultat
 
     def coups_possibles(self, couleur: str) -> list[tuple[Case, Case]]:
         """Les coups autorisés, triés. S'il existe des prises, seules les prises comptent."""
-        raise NotImplementedError("à compléter")
+
+        prises = self.prises_possibles(couleur)
+        resultat = []
+
+        # Si une prise existe, les déplacements simples sont interdits.
+        if prises:
+            for depart, destinations in prises.items():
+                for arrivee in destinations:
+                    resultat.append((depart, arrivee))
+
+        else:
+            for depart in self:
+                piece = self[depart]
+
+                if piece.couleur == couleur:
+                    for arrivee in piece.deplacements(depart, self):
+                        resultat.append((depart, arrivee))
+
+        return sorted(resultat, key=lambda coup: (ordre(coup[0]), ordre(coup[1])))
 
     def deplacer(self, depart: "Case | str", arrivee: "Case | str") -> "Piece | None":
         """Joue un coup, renvoie la pièce prise ou None. Vérifier d'abord, modifier ensuite."""
-        raise NotImplementedError("à compléter")
+        depart = en_case(depart)
+        arrivee = en_case(arrivee)
+
+        piece = self[depart]
+
+        if piece is None:
+            raise CoupInvalideError(depart, arrivee,"aucune pièce sur la case de départ")
+
+        couleur = piece.couleur
+        prises = self.prises_possibles(couleur)
+
+        piece_prise = None
+
+        if prises:
+            if depart not in prises or arrivee not in prises[depart]:
+                raise CoupInvalideError(depart, arrivee, "la prise est obligatoire")
+
+            case_prise = prises[depart][arrivee]
+            piece_prise = self[case_prise]
+
+        else:
+            if arrivee not in piece.deplacements(depart, self):
+                raise CoupInvalideError(depart, arrivee, "déplacement interdit")
+
+        # Modifier le plateau seulement après les vérifications.
+        del self._pieces[depart]
+
+        if piece_prise is not None:
+            del self._pieces[case_prise]
+
+        self._pieces[arrivee] = piece.promouvoir(arrivee)
+
+        return piece_prise
 
     # --- Étape 8
     def vers_dict(self) -> dict[str, str]:
@@ -286,8 +345,15 @@ class Pion(Piece):
     # --- Étape 6
     def promouvoir(self, case):
         """Sur la dernière ligne (10 pour les blancs, 1 pour les noirs), le pion devient dame."""
-        raise NotImplementedError("à compléter")
+        case = en_case(case)
 
+        if self.couleur == "blanc" and case.ligne == 10:
+            return Dame("blanc")
+
+        if self.couleur == "noir" and case.ligne == 1:
+            return Dame("noir")
+
+        return self
 
 # --- Étape 5 : la dame ---------------------------------------------------------------------------
 class Dame(Piece):
